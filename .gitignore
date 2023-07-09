@@ -1,3 +1,13 @@
+
+# Misc. System Files
+*.swp
+
+# Build directory
+/build
+
+# Saved files
+/tokens.json
+
 # Logs
 logs
 *.log

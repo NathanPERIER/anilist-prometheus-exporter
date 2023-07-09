@@ -1,1 +1,3 @@
-# anilist-prometheus-exporter
+# AniList Prometheus Exporter
+
+
