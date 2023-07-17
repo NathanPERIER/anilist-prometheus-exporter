@@ -1,7 +1,7 @@
 import { TOKENS_FILE, getEnv } from '../utils/env.js';
 import axios from 'axios';
-import * as fs from 'fs';
-import * as async_fs from 'fs/promises';
+import fs from 'fs';
+import async_fs from 'fs/promises';
 
 
 
@@ -12,6 +12,10 @@ interface AnilistTokens {
     valid_until: number
 }
 
+function sleep(time_ms: number): Promise<void> {
+    return new Promise((resolve) => { setTimeout(resolve, time_ms); });
+}
+
 
 const ANILIST_MAX_QUOTA = 90;
 
@@ -19,9 +23,11 @@ export class AnilistRequester {
 
     private tokens!: AnilistTokens;
     private requests_quota: number;
+    private last_request_time: number;
 
     private constructor() {
         this.requests_quota = ANILIST_MAX_QUOTA;
+        this.last_request_time = 0;
     }
 
     private async try_load_token(): Promise<boolean> {
@@ -50,7 +56,7 @@ export class AnilistRequester {
         });
         if(response.status !== 200) {
             console.error(response);
-            throw Error("Anilist authentication failed with code " + response.status);
+            throw Error("AniList authentication failed with code " + response.status);
         }
         this.tokens.token_type = response.data['token_type'];
         this.tokens.access = response.data['access_token'];
@@ -84,27 +90,48 @@ export class AnilistRequester {
         // TODO
     }
 
-    public async query(query: string, variables: {[key: string]: string | number | boolean} = {}): Promise<any> {
+    public async query(query: string, variables: {[key: string]: string | number | boolean} = {}): Promise<{ [key: string]: any }> {
+        let nb_retries = 0;
         // TODO :
         //  - Check for token validity => refresh ?
-        //  - Check rate limit => wait ?
-        let response = await axios.post('https://graphql.anilist.co', {
+        if(this.requests_quota == 0) {
+            if(Date.now() - this.last_request_time < 60 * 1000) {
+                console.info("Request quota reached 0, pause for one minute before making any further request");
+                await sleep(60 * 1000); // TODO : there may be a better way if we keep the times at which some requests are made
+            } else {
+                this.requests_quota = ANILIST_MAX_QUOTA;
+            }
+        }
+        do {
+            nb_retries++;
+            this.last_request_time = Date.now();
+            let response = await axios.post('https://graphql.anilist.co', {
             'query': query,
             'variables': variables
-        }, {
-            headers: {
-                Authorization: "Bearer " + this.tokens.access,
-                'Content-Type': 'application/json',
-                Accept: 'application/json'
-            },
-            validateStatus: (_status: number) => { return true; }
-        });
-        // TODO :
-        //  - 200 => `X-RateLimit-Remaining` (queue of timestamps ?)
-        //  - 429 => `Retry-After`
-        return response.data['data'];
+            }, {
+                headers: {
+                    Authorization: "Bearer " + this.tokens.access,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json'
+                },
+                validateStatus: (_status: number) => { return true; }
+            });
+            if(response.status === 200) {
+                // console.debug("X-RateLimit-Remaining: " + response.headers['x-ratelimit-remaining']);
+                this.requests_quota = Number(response.headers['x-ratelimit-remaining']);
+                return response.data['data'];
+            }
+            if(response.status === 429) {
+                console.warn("Exceeded request quota");
+                console.debug("Retry-After: " + response.headers['retry-after']);
+                const retry_after = Number(response.headers['retry-after']);
+                await sleep(1000 * retry_after);
+            } else {
+                throw Error("AniList query failed with code " + response.status)
+            }
+        } while(nb_retries < 5);
+        throw Error('AniList query exceeded max number of retries');
     }
-
 }
 
 
