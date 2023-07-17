@@ -7,6 +7,12 @@
 
 # Saved files
 /tokens.json
+/anime_lists.json
+/animes.json
+/manga_lists.json
+/mangas.json
+/tags.json
+/user.json
 
 # Logs
 logs
