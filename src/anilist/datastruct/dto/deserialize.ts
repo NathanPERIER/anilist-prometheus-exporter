@@ -58,6 +58,9 @@ function read_media(data: {[key: string]: any}): MediaDTO {
 
 export function read_anime_lists(lists: Map<string, AnimeListDTO>, animes: Map<string, AnimeDTO>, data: {[key: string]: any}[]): void {
     for(let list_data of data) {
+        if(list_data['isCustomList']) {
+            continue;
+        }
         const list_name: string = list_data['name'];
         if(!lists.has(list_name)) {
             lists.set(list_name, {
@@ -92,6 +95,9 @@ export function read_anime_lists(lists: Map<string, AnimeListDTO>, animes: Map<s
 
 export function read_manga_lists(lists: Map<string, MangaListDTO>, mangas: Map<string, MangaDTO>, data: {[key: string]: any}[]): void {
     for(let list_data of data) {
+        if(list_data['isCustomList']) {
+            continue;
+        }
         const list_name: string = list_data['name'];
         if(!lists.has(list_name)) {
             lists.set(list_name, {

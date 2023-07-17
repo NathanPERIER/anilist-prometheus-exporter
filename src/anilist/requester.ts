@@ -12,12 +12,6 @@ interface AnilistTokens {
     valid_until: number
 }
 
-// TODO :
-//  - Check for timestamp validity before
-//  - Refresh token
-//  - `X-RateLimit-Remaining` (queue of timestamps ?)
-//  - 429 + `Retry-After`
-
 
 const ANILIST_MAX_QUOTA = 90;
 
@@ -90,7 +84,10 @@ export class AnilistRequester {
         // TODO
     }
 
-    public async query(query: string, variables: {[key: string]: string | number | boolean}) {
+    public async query(query: string, variables: {[key: string]: string | number | boolean} = {}): Promise<any> {
+        // TODO :
+        //  - Check for token validity => refresh ?
+        //  - Check rate limit => wait ?
         let response = await axios.post('https://graphql.anilist.co', {
             'query': query,
             'variables': variables
@@ -99,13 +96,17 @@ export class AnilistRequester {
                 Authorization: "Bearer " + this.tokens.access,
                 'Content-Type': 'application/json',
                 Accept: 'application/json'
-            }
+            },
+            validateStatus: (_status: number) => { return true; }
         });
-        // TODO
+        // TODO :
+        //  - 200 => `X-RateLimit-Remaining` (queue of timestamps ?)
+        //  - 429 => `Retry-After`
+        return response.data['data'];
     }
 
 }
 
 
-export let requester = await AnilistRequester.init();
+export const requester = await AnilistRequester.init();
 
