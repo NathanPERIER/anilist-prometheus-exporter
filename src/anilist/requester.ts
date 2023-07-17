@@ -1,5 +1,5 @@
-import { TOKENS_FILE, getEnv } from '../utils/env';
-import { AxiosResponse, default as axios }  from 'axios';
+import { TOKENS_FILE, getEnv } from '../utils/env.js';
+import axios from 'axios';
 import * as fs from 'fs';
 import * as async_fs from 'fs/promises';
 
@@ -107,4 +107,5 @@ export class AnilistRequester {
 }
 
 
-export let requester = AnilistRequester.init();
+export let requester = await AnilistRequester.init();
+

@@ -1,4 +1,4 @@
-import { MediaDTO, MediaEntryDTO, MediaListDTO } from './media';
+import { MediaDTO, MediaEntryDTO, MediaListDTO } from './media.js';
 
 export interface AnimeSeasonDTO {
     season: string,

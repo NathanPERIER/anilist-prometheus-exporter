@@ -1,5 +1,5 @@
-import { MangaDTO, MangaEntryDTO, MangaListDTO } from './dto/manga';
-import { Media, MediaEntry, MediaList, MediaType } from './media';
+import { MangaDTO, MangaEntryDTO, MangaListDTO } from './dto/manga.js';
+import { Media, MediaEntry, MediaList, MediaType } from './media.js';
 
 export class Manga extends Media {
     public constructor(dto: MangaDTO) {

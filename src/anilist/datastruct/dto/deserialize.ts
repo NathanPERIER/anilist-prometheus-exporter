@@ -1,6 +1,6 @@
-import { AnimeDTO, AnimeListDTO } from "./anime";
-import { MangaDTO, MangaListDTO } from "./manga";
-import { MediaDTO, MediaEntryDTO } from "./media";
+import { AnimeDTO, AnimeListDTO } from "./anime.js";
+import { MangaDTO, MangaListDTO } from "./manga.js";
+import { MediaDTO, MediaEntryDTO } from "./media.js";
 
 
 function read_media_entry(data: {[key: string]: any}): MediaEntryDTO {
@@ -56,7 +56,7 @@ function read_media(data: {[key: string]: any}): MediaDTO {
 }
 
 
-export function read_anime_lists(lists: Map<string, AnimeListDTO>, animes: Map<string, AnimeDTO>, data: {[key: string]: any}[]) {
+export function read_anime_lists(lists: Map<string, AnimeListDTO>, animes: Map<string, AnimeDTO>, data: {[key: string]: any}[]): void {
     for(let list_data of data) {
         const list_name: string = list_data['name'];
         if(!lists.has(list_name)) {
@@ -90,7 +90,7 @@ export function read_anime_lists(lists: Map<string, AnimeListDTO>, animes: Map<s
     }    
 }
 
-export function read_manga_lists(lists: Map<string, MangaListDTO>, mangas: Map<string, MangaDTO>, data: {[key: string]: any}[]) {
+export function read_manga_lists(lists: Map<string, MangaListDTO>, mangas: Map<string, MangaDTO>, data: {[key: string]: any}[]): void {
     for(let list_data of data) {
         const list_name: string = list_data['name'];
         if(!lists.has(list_name)) {

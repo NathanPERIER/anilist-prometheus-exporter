@@ -1,4 +1,4 @@
-import { FuzzyDate, MediaDTO, MediaEntryDTO, MediaListDTO } from "./dto/media"
+import { FuzzyDate, MediaDTO, MediaEntryDTO, MediaListDTO } from "./dto/media.js"
 
 export enum MediaType { ANIME, MANGA }
 

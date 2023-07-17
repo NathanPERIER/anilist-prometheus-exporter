@@ -1,5 +1,5 @@
-import { AnimeDTO, AnimeEntryDTO, AnimeListDTO } from './dto/anime';
-import { Media, MediaEntry, MediaList, MediaType } from './media';
+import { AnimeDTO, AnimeEntryDTO, AnimeListDTO } from './dto/anime.js';
+import { Media, MediaEntry, MediaList, MediaType } from './media.js';
 
 export enum Season {
     WINTER,
