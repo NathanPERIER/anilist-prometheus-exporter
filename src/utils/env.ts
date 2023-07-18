@@ -1,6 +1,7 @@
 
 const defaults: {[name: string]: string} = {
 	'ALPE_REQUIRE_AUTHENTICATION': 'false',
+	'ALPE_CACHE_TIMEOUT_SEC': '3300',            // 55 minutes
 	'ALPE_DATA_DIR': '.',
 	'ALPE_TOKENS_FILE': './tokens.json',
 	'ALPE_PORT': '8080'
@@ -27,6 +28,7 @@ export function get_env_uint(name: string): number {
 
 
 export const REQUIRE_AUTHENTICATION = (getEnv('ALPE_REQUIRE_AUTHENTICATION') === 'true');
+export const CACHE_TIMEOUT_SEC      = get_env_uint('ALPE_CACHE_TIMEOUT_SEC');
 export const DATA_DIRECTORY         = getEnv('ALPE_DATA_DIR');
 export const TOKENS_FILE            = getEnv('ALPE_TOKENS_FILE');
 export const PORT                   = get_env_uint('ALPE_PORT');
