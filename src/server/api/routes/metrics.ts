@@ -26,7 +26,7 @@ async function load_data(): Promise<[AuthenticatedUser, Map<string, AnimeList>, 
     let anime_lists: Map<string, AnimeListDTO>;
     let mangas:      Map<string, MangaDTO>;
     let manga_lists: Map<string, MangaListDTO>;
-    if(Date.now() - data_last_loaded > CACHE_TIMEOUT_SEC) {
+    if(Date.now() - data_last_loaded > CACHE_TIMEOUT_SEC * 1000) {
         console.log('Loading data from the API');
 
         const connector = await AnilistConnector.init();
