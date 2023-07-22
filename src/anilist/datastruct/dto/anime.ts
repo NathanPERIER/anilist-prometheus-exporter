@@ -1,20 +1,20 @@
 import { MediaDTO, MediaEntryDTO, MediaListDTO } from './media.js';
 
 export interface AnimeSeasonDTO {
-    season: string,
-    year: number
+    season: string;
+    year: number;
 }
 
 export interface AnimeDTO extends MediaDTO {
-    type: "ANIME",
-    season: AnimeSeasonDTO | null,
-    episodes: number,
-    duration: number
+    type: "ANIME";
+    season: AnimeSeasonDTO | null;
+    episodes: number;
+    duration: number;
 }
 
 export interface AnimeEntryDTO extends MediaEntryDTO {
-    anime_id: number,
-    episodes_viewed: number
+    anime_id: number;
+    episodes_viewed: number;
 }
 
 export interface AnimeListDTO extends MediaListDTO {
