@@ -5,8 +5,10 @@ import { AnilistConnector } from '../../../anilist/connector.js';
 import { AuthenticatedUser } from '../../../anilist/datastruct/user.js';
 import { AnimeDTO, AnimeListDTO } from '../../../anilist/datastruct/dto/anime.js';
 import { MangaDTO, MangaListDTO } from '../../../anilist/datastruct/dto/manga.js';
+import { MediaEntryStatus, MediaStatus } from '../../../anilist/datastruct/media.js';
 import { CACHE_TIMEOUT_SEC, DATA_DIRECTORY } from '../../../utils/env.js';
 import { dump_json, load_json } from '../../../utils/io.js';
+import { PrometheusDocument } from '../../../prometheus/builder.js';
 import path from 'path';
 
 const USER_FILE_PATH = path.join(DATA_DIRECTORY, 'user.json');
@@ -70,12 +72,52 @@ async function load_data(): Promise<[AuthenticatedUser, Map<string, AnimeList>, 
 
 
 
-app.get('/test', async (_req, res) => {
+app.get('/metrics', async (_req, res) => {
 
-    let [user_data, anime_data, manga_data] = await load_data();
+    const [user_data, anime_data, manga_data] = await load_data();
+    const animes = anime_data.map(val => val.animes).flat();
+    const mangas = manga_data.map(val => val.mangas).flat();
 
     // TODO compute metrics
 
-    res.type('application/json');
-    res.send(user_data);
+    let document = new PrometheusDocument();
+
+    document.add_group('anilist_user', 'User for which the data is exported.', [[{'username': user_data.username, 'user_id': user_data.user_id.toString()}, 1]]);
+    
+    document.add_group('anilist_publish_status_name', 'Names for anime/manga publishing status.', Object.keys(MediaStatus).filter(val => isNaN(Number(val))).map(key => [{'publish_status_name': key.toLowerCase()}, (<any>MediaStatus)[key]]));
+    document.add_group('anilist_progress_status_name', 'Names for reading/watching status.', Object.keys(MediaEntryStatus).filter(val => isNaN(Number(val))).map(key => [{'publish_status_name': key.toLowerCase()}, (<any>MediaEntryStatus)[key]]));
+
+    document.add_group('anilist_notification_count', 'Number of unread notifications.', [[{}, user_data.unread_notifs]]);
+    
+    document.add_group('anilist_anime_title', 'Titles associated with anime identifiers.', animes.map(anime => [{'anime_id': anime.get_id(), 'anime_title': anime.anime.titles.user}, 1]));
+    document.add_group('anilist_anime_status', 'Current status of this anime.', animes.map(anime => [{'anime_id': anime.get_id()}, anime.anime.status.toString()]));
+    document.add_group('anilist_anime_episode_count', 'Number of episodes published for this anime.', animes.map(anime => [{'anime_id': anime.get_id()}, anime.anime.episodes]));
+    document.add_group('anilist_anime_ep_duration_min', 'Average duration of an episode of this anime in minutes.', animes.map(anime => [{'anime_id': anime.get_id()}, anime.anime.duration]));
+    document.add_group('anilist_anime_favourite_count', 'Number of users who have this anime as a favourite.', animes.map(anime => [{'anime_id': anime.get_id()}, anime.anime.nb_favourites]));
+    document.add_group('anilist_anime_average_score', 'Average score given by the users to this anime (non-weighted !).', animes.map(anime => [{'anime_id': anime.get_id()}, anime.anime.score_mean]));
+    document.add_group('anilist_anime_season', 'Season during which this anime was published.', animes.map(anime => [{'anime_id': anime.get_id()}, (anime.anime.season === null) ? 0 : anime.anime.season.season]));
+    document.add_group('anilist_anime_year', 'Year during which this anime was published.', animes.map(anime => [{'anime_id': anime.get_id()}, (anime.anime.season === null) ? 0 : anime.anime.season.year]));
+    document.add_group('anilist_anime_favourite', 'Wether or not the user has this anime as a favourite.', animes.map(anime => [{'anime_id': anime.get_id()}, anime.favourite ? 1 : 0]));
+    document.add_group('anilist_anime_rating', 'Score given by the user to this anime (out of 100, 0 if no rating).', animes.map(anime => [{'anime_id': anime.get_id()}, anime.score]));
+    document.add_group('anilist_anime_watching_status', 'Watching status of this anime for the user.', animes.map(anime => [{'anime_id': anime.get_id()}, anime.status]));
+    document.add_group('anilist_anime_episode_progress', 'Number of episodes of this anime watched by the user.', animes.map(anime => [{'anime_id': anime.get_id()}, anime.episodes_viewed]));
+    document.add_group('anilist_anime_rewatches', 'Number of times the user re-watched this anime.', animes.map(anime => [{'anime_id': anime.get_id()}, anime.repeat]));
+
+    document.add_group('anilist_manga_title', 'Titles associated with manga identifiers.', mangas.map(manga => [{'manga_id': manga.get_id(), 'manga_title': manga.manga.titles.user}, 1]));
+    document.add_group('anilist_manga_status', 'Current status of this manga.', mangas.map(manga => [{'manga_id': manga.get_id()}, manga.manga.status.toString()]));
+    document.add_group('anilist_manga_volume_count', 'Number of volumes published for this manga.', mangas.map(manga => [{'manga_id': manga.get_id()}, manga.manga.volumes]));
+    document.add_group('anilist_manga_chapter_count', 'Number of chapters published for this manga.', mangas.map(manga => [{'manga_id': manga.get_id()}, manga.manga.chapters]));
+    document.add_group('anilist_manga_favourite_count', 'Number of users who have this manga as a favourite.', mangas.map(manga => [{'manga_id': manga.get_id()}, manga.manga.nb_favourites]));
+    document.add_group('anilist_manga_average_score', 'Average score given by the users to this manga (non-weighted !).', mangas.map(manga => [{'manga_id': manga.get_id()}, manga.manga.score_mean]));
+    document.add_group('anilist_manga_favourite', 'Wether or not the user has this manga as a favourite.', mangas.map(manga => [{'manga_id': manga.get_id()}, manga.favourite ? 1 : 0]));
+    document.add_group('anilist_manga_rating', 'Score given by the user to this manga (out of 100, 0 if no rating).', mangas.map(manga => [{'manga_id': manga.get_id()}, manga.score]));
+    document.add_group('anilist_manga_reading_status', 'Reading status of this manga for the user.', mangas.map(manga => [{'manga_id': manga.get_id()}, manga.status.toString()]));
+    document.add_group('anilist_manga_volume_progress', 'Number of volumes of this manga read by the user.', mangas.map(manga => [{'manga_id': manga.get_id()}, manga.volumes_read]));
+    document.add_group('anilist_manga_chapter_progress', 'Number of chapters of this manga read by the user.', mangas.map(manga => [{'manga_id': manga.get_id()}, manga.chapters_read]));
+    document.add_group('anilist_manga_rereads', 'Number of times the user re-read this manga.', mangas.map(manga => [{'manga_id': manga.get_id()}, manga.repeat]));
+
+    console.log(`Exporting ${document.nb_groups()} groups, totalling ${document.nb_points()} metric points`);
+
+    res.type('text/plain');
+    res.send(document.format());
 });

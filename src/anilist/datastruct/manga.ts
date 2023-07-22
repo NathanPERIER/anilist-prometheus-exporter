@@ -22,6 +22,10 @@ export class MangaEntry extends MediaEntry {
         this.chapters_read = dto.chapters_read;
     }
 
+    public get_id(): string {
+        return this.manga.media_id.toString();
+    }
+
     public readonly manga: Manga;
     public readonly volumes_read: number;
     public readonly chapters_read: number;

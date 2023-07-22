@@ -2,10 +2,10 @@ import { AnimeDTO, AnimeEntryDTO, AnimeListDTO } from './dto/anime.js';
 import { Media, MediaEntry, MediaList, MediaType } from './media.js';
 
 export enum Season {
-    WINTER,
-    SPRING,
-    SUMMER,
-    FALL
+    WINTER = 1,
+    SPRING = 2,
+    SUMMER = 3,
+    FALL   = 4
 }
 
 export interface AnimeSeason {
@@ -36,6 +36,10 @@ export class AnimeEntry extends MediaEntry {
         super(dto);
         this.anime = new Anime(animes.get(dto.anime_id.toString())!);
         this.episodes_viewed = dto.episodes_viewed;
+    }
+
+    public get_id(): string {
+        return this.anime.media_id.toString();
     }
 
     public readonly anime: Anime;

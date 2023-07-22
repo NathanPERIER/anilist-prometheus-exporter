@@ -82,7 +82,7 @@ export class Media {
     public readonly adult: boolean;
     public readonly status_distribution: Map<MediaEntryStatus, number>;
     public readonly score_distribution: Map<number, number>;
-    public readonly score_average: number;
+    public readonly score_average: number; // = nb_ratings < 50 ? 0 : (nb_ratings / (nb_ratings + 50)) * score_mean + (50 / (nb_ratings + 50)) * 41
     public readonly score_mean: number;
     public readonly nb_favourites: number;
 }
