@@ -3,6 +3,10 @@ import { MangaDTO, MangaListDTO } from "./manga.js";
 import { MediaDTO, MediaEntryDTO } from "./media.js";
 
 
+function zero_default(value: number | null): number {
+    return (value === null) ? 0 : value;
+}
+
 function read_media_entry(data: {[key: string]: any}): MediaEntryDTO {
     return {
         favourite: data['media']['isFavourite'],
@@ -34,9 +38,9 @@ function read_media(data: {[key: string]: any}): MediaDTO {
         adult: data['isAdult'],
         status_distribution: {},
         score_distribution: {},
-        score_average: data['averageScore'],
-        score_mean: data['meanScore'],
-        nb_favourites: data['favourites']
+        score_average: zero_default(data['averageScore']),
+        score_mean: zero_default(data['meanScore']),
+        nb_favourites: zero_default(data['favourites'])
     }
     for(let tag_data of data['tags']) {
         res.tags.push({
@@ -84,8 +88,8 @@ export function read_anime_lists(lists: Map<string, AnimeListDTO>, animes: Map<s
                         season: entry_data['media']['season'],
                         year: entry_data['media']['seasonYear']
                     },
-                    episodes: entry_data['media']['episodes'],
-                    duration: entry_data['media']['duration'],
+                    episodes: zero_default(entry_data['media']['episodes']),
+                    duration: zero_default(entry_data['media']['duration']),
                     ...read_media(entry_data['media'])
                 });
             }
@@ -118,8 +122,8 @@ export function read_manga_lists(lists: Map<string, MangaListDTO>, mangas: Map<s
             if(!mangas.has(manga_id.toString())) {
                 mangas.set(manga_id.toString(), {
                     type: "MANGA",
-                    chapters: entry_data['media']['chapters'],
-                    volumes: entry_data['media']['volumes'],
+                    chapters: zero_default(entry_data['media']['chapters']),
+                    volumes: zero_default(entry_data['media']['volumes']),
                     ...read_media(entry_data['media'])
                 });
             }
