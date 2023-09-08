@@ -58,10 +58,12 @@ export class AnilistRequester {
             console.error(response);
             throw Error("AniList authentication failed with code " + response.status);
         }
-        this.tokens.token_type = response.data['token_type'];
-        this.tokens.access = response.data['access_token'];
-        this.tokens.refresh = response.data['refresh_token'];
-        this.tokens.valid_until = Math.floor(Date.now() / 1000) + response.data['expires_in'];
+        this.tokens = {
+            token_type: response.data['token_type'],
+            access: response.data['access_token'],
+            refresh: response.data['refresh_token'],
+            valid_until: Math.floor(Date.now() / 1000) + response.data['expires_in']
+        };
         console.log("Authenticated successfully, token valid until " + (new Date(this.tokens.valid_until * 1000)).toLocaleString('en-UK'));
         await async_fs.writeFile(TOKENS_FILE, JSON.stringify(this.tokens), { encoding: 'utf-8' });
     }
