@@ -40,8 +40,8 @@ docker run --name anilist_exporter \
     -e 'ALPE_ANILIST_CLIENT_ID=...' \
     -e 'ALPE_ANILIST_CLIENT_SECRET=...' \
     -e 'ALPE_ANILIST_AUTH_CODE=...' \
-    -e 'ALPE_TOKENS_FILE=/opt/alpe/tokens.json' \
-    -v './tokens.json:/opt/alpe/tokens.json' \
+    -e 'ALPE_TOKENS_FILE=/etc/alpe/tokens.json' \
+    -v './tokens.json:/etc/alpe/tokens.json' \
     alpe:latest 
 ```
 

@@ -12,7 +12,7 @@ RUN chmod 777 '/data' '/.npm'
 
 ENV ALPE_CACHE_TIMEOUT_SEC=3300
 ENV ALPE_DATA_DIR=/data
-ENV ALPE_TOKENS_FILE=/opt/alpe/tokens.json
+ENV ALPE_TOKENS_FILE=/etc/alpe/tokens.json
 ENV ALPE_PORT=8080
 
 ENTRYPOINT npm run start
