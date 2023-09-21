@@ -84,8 +84,8 @@ app.get('/metrics', async (_req, res) => {
 
     document.add_group('anilist_user', 'User for which the data is exported.', [[{'user_id': user_id, 'username': user_data.username}, 1]]);
     
-    document.add_group('anilist_publish_status_name', 'Names for anime/manga publishing status.', Object.keys(MediaStatus).filter(val => isNaN(Number(val))).map(key => [{'publish_status_name': key.toLowerCase()}, (<any>MediaStatus)[key]]));
-    document.add_group('anilist_progress_status_name', 'Names for reading/watching status.', Object.keys(MediaEntryStatus).filter(val => isNaN(Number(val))).map(key => [{'publish_status_name': key.toLowerCase()}, (<any>MediaEntryStatus)[key]]));
+    document.add_group('anilist_publish_status_name', 'Names for anime/manga publishing status.', Object.keys(MediaStatus).filter(val => isNaN(Number(val))).map(key => [{'publish_status': (<any>MediaStatus)[key].toString(), 'display_name': key.toLowerCase()}, 1]));
+    document.add_group('anilist_progress_status_name', 'Names for reading/watching status.', Object.keys(MediaEntryStatus).filter(val => isNaN(Number(val))).map(key => [{'progress_status': (<any>MediaEntryStatus)[key].toString(), 'display_name': key.toLowerCase()}, 1]));
 
     document.add_group('anilist_notification_count', 'Number of unread notifications.', [[{'user_id': user_id}, user_data.unread_notifs]]);
     
