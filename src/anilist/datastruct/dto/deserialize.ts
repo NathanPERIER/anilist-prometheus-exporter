@@ -49,12 +49,16 @@ function read_media(data: {[key: string]: any}): MediaDTO {
             spoiler: tag_data['isMediaSpoiler']
         })
     }
-    for(let distrib of data['stats']['statusDistribution']) {
-        res.status_distribution[distrib['status']] = distrib['amount']
+    if(data['stats']['statusDistribution'] !== null) {
+        for(let distrib of data['stats']['statusDistribution']) {
+            res.status_distribution[distrib['status']] = distrib['amount']
+        }
     }
-    for(let distrib of data['stats']['scoreDistribution']) {
-        const score = (distrib['score'] as number).toString()
-        res.score_distribution[score] = distrib['amount']
+    if(data['stats']['scoreDistribution'] !== null) {
+        for(let distrib of data['stats']['scoreDistribution']) {
+            const score = (distrib['score'] as number).toString()
+            res.score_distribution[score] = distrib['amount']
+        }
     }
     return res;
 }
