@@ -72,13 +72,15 @@ async function load_data(): Promise<[AuthenticatedUser, Map<string, AnimeList>, 
 
 
 
-app.get('/metrics', async (_req, res) => {
+async function load_document(): Promise<PrometheusDocument> {
 
     const [user_data, anime_data, manga_data] = await load_data();
+
     const animes = anime_data.map(val => val.animes).flat();
     const mangas = manga_data.map(val => val.mangas).flat();
 
     const user_id = user_data.user_id.toString();
+
 
     let document = new PrometheusDocument();
 
@@ -116,8 +118,23 @@ app.get('/metrics', async (_req, res) => {
     document.add_group('anilist_manga_user_chapter_progress', 'Number of chapters of this manga read by the user.', mangas.map(manga => [{'user_id': user_id, 'manga_id': manga.get_id()}, manga.chapters_read]));
     document.add_group('anilist_manga_user_rereads', 'Number of times the user re-read this manga.', mangas.map(manga => [{'user_id': user_id, 'manga_id': manga.get_id()}, manga.repeat]));
 
-    console.log(`Exporting ${document.nb_groups()} groups, totalling ${document.nb_points()} metric points`);
+    return document;
+}
 
-    res.type('text/plain');
-    res.send(document.format());
+
+
+app.get('/metrics', async (_req, res) => {
+    
+    try {
+        const document = await load_document();
+        console.log(`Exporting ${document.nb_groups()} groups, totalling ${document.nb_points()} metric points`);
+
+        res.type('text/plain');
+        res.send(document.format());
+    } catch(e) {
+        console.error(e);
+        res.status(500);
+        res.send();
+    }
+
 });
