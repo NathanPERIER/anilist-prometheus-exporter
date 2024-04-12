@@ -1,4 +1,4 @@
-import { TOKENS_FILE, getEnv } from '../utils/env.js';
+import { TOKENS_FILE, CLIENT_ID, CLIENT_SECRET, get_auth_code } from '../utils/env.js';
 import { ApiStatus, ApiResult, api_ok, api_err } from './datastruct/api_status.js';
 import axios from 'axios';
 import fs from 'fs';
@@ -19,14 +19,21 @@ function sleep(time_ms: number): Promise<void> {
 
 
 const ANILIST_MAX_QUOTA = 90;
+const ANILIST_OAUTH_URL = 'https://anilist.co/api/v2/oauth/token';
 
 export class AnilistRequester {
 
     private tokens!: AnilistTokens;
+
+    private readonly client_id: string;
+    private readonly client_secret: string;
+
     private requests_quota: number;
     private last_request_time: number;
 
-    private constructor() {
+    private constructor(client_id: string, client_secret: string) {
+        this.client_id = client_id;
+        this.client_secret = client_secret;
         this.requests_quota = ANILIST_MAX_QUOTA;
         this.last_request_time = 0;
     }
@@ -42,11 +49,11 @@ export class AnilistRequester {
         return false;
     }
 
-    private async auth(client_id: string, client_secret: string, auth_code: string) {
-        let response = await axios.post('https://anilist.co/api/v2/oauth/token', {
+    private async auth(auth_code: string) {
+        let response = await axios.post(ANILIST_OAUTH_URL, {
             grant_type: 'authorization_code',
-            client_id: client_id,
-            client_secret: client_secret,
+            client_id: this.client_id,
+            client_secret: this.client_secret,
             redirect_uri: 'https://anilist.co/api/v2/oauth/pin',
             code: auth_code
         }, {
@@ -65,12 +72,12 @@ export class AnilistRequester {
             refresh: response.data['refresh_token'],
             valid_until: Math.floor(Date.now() / 1000) + response.data['expires_in']
         };
-        console.log("Authenticated successfully, token valid until " + (new Date(this.tokens.valid_until * 1000)).toLocaleString('en-UK'));
-        await async_fs.writeFile(TOKENS_FILE, JSON.stringify(this.tokens), { encoding: 'utf-8' });
+        console.log("Authenticated successfully");
+        await this.write_tokens();
     }
 
     public static async init(): Promise<AnilistRequester> {
-        let res = new AnilistRequester();
+        let res = new AnilistRequester(CLIENT_ID, CLIENT_SECRET);
         if(await res.try_load_token()) {
             if(res.check_token_validity()) {
                 console.log('AniList token successfully retrieved from file with some validity left');
@@ -80,7 +87,7 @@ export class AnilistRequester {
             }
         } else {
             console.warn('No saved authentication token, will attempt to obtain one');
-            res.auth(getEnv('ALPE_ANILIST_CLIENT_ID'), getEnv('ALPE_ANILIST_CLIENT_SECRET'), getEnv('ALPE_ANILIST_AUTH_CODE'));
+            res.auth(get_auth_code());
         }
         return res;
     }
@@ -89,8 +96,35 @@ export class AnilistRequester {
         return this.tokens.valid_until > Math.floor(Date.now() / 1000);
     }
 
-    private refresh_token() {
-        // TODO
+    private async write_tokens() {
+        await async_fs.writeFile(TOKENS_FILE, JSON.stringify(this.tokens), { encoding: 'utf-8' });
+        console.log("Token written to disk, valid until " + (new Date(this.tokens.valid_until * 1000)).toLocaleString('en-UK'));
+    }
+
+    private async refresh_token() {
+        console.log('Token refresh required');
+        let response = await axios.post(ANILIST_OAUTH_URL, {
+            grant_type: 'refresh_token',
+            client_id: this.client_id,
+            client_secret: this.client_secret,
+            refresh_token: this.tokens.refresh
+        }, {
+            headers: {
+                Accept: 'application/json'
+            },
+            validateStatus: (_status: number) => { return true; }
+        });
+        if(response.status !== 200) {
+            console.error(response);
+            throw Error("AniList token refresh failed with code " + response.status);
+        }
+        this.tokens.access = response.data['access_token'];
+        this.tokens.valid_until = Math.floor(Date.now() / 1000) + response.data['expires_in'];
+        if('refresh_token' in response.data) {
+            this.tokens.refresh = response.data['refresh_token'];
+        }
+        console.log("Tokens refreshed successfully");
+        await this.write_tokens();
     }
 
     public async query(query: string, variables: {[key: string]: string | number | boolean} = {}): Promise<ApiResult<{ [key: string]: any }>> {
@@ -98,7 +132,7 @@ export class AnilistRequester {
         let status = ApiStatus.AUTH_ERROR;
         try {
             if(!this.check_token_validity()) {
-                this.refresh_token();
+                await this.refresh_token();
             }
             if(this.requests_quota == 0) {
                 if(Date.now() - this.last_request_time < 60 * 1000) {

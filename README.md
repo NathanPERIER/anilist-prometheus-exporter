@@ -2,7 +2,7 @@
 
 ## Get the tokens
 
-First, you need to [create an OAuth client](https://anilist.co/settings/developer) for the exporter. Use `https://anilist.co/api/v2/oauth/pin` as the redirect URL. Once this is done, you can get the client id and client secret in your developer page.
+First, you need to [create an OAuth client](https://anilist.co/settings/developer) for the exporter. Use `https://anilist.co/api/v2/oauth/pin` as the redirect URL. Once this is done, you can get the client id and client secret in your developer page. Set the `ALPE_ANILIST_CLIENT_ID` and `ALPE_ANILIST_CLIENT_SECRET` environment variables accordingly.
 
 Then, you want to visit the following URL in a web browser (replace `YOUR_CLIENT_ID` by the value obtained previously) :
 
@@ -10,12 +10,7 @@ Then, you want to visit the following URL in a web browser (replace `YOUR_CLIENT
 https://anilist.co/api/v2/oauth/authorize?response_type=code&redirect_uri=https%3A%2F%2Fanilist%2Eco%2Fapi%2Fv2%2Foauth%2Fpin&client_id=YOUR_CLIENT_ID
 ```
 
-Click "Authorize" and copy the text that is provided to you. This is a token that will enable the exporter to access your account.
-
-On the first time you run the exporter, you will need to set three environment values :
-   - `ALPE_ANILIST_CLIENT_ID`, the id obtained from the developer page
-   - `ALPE_ANILIST_CLIENT_SECRET`, the secret obtained from the developer page
-   - `ALPE_ANILIST_AUTH_CODE`, the code obtained after authorizing the client to access your account
+Click "Authorize" and copy the text that is provided to you. This is a token that will enable the exporter to access your account. On the first run, you will need to set this value in the `ALPE_ANILIST_AUTH_CODE` environment variable.
 
 ## Run with Docker (recommended)
 
