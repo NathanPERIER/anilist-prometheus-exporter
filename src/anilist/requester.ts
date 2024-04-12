@@ -1,4 +1,5 @@
 import { TOKENS_FILE, getEnv } from '../utils/env.js';
+import { ApiStatus, ApiResult, api_ok, api_err } from './datastruct/api_status.js';
 import axios from 'axios';
 import fs from 'fs';
 import async_fs from 'fs/promises';
@@ -92,47 +93,69 @@ export class AnilistRequester {
         // TODO
     }
 
-    public async query(query: string, variables: {[key: string]: string | number | boolean} = {}): Promise<{ [key: string]: any }> {
+    public async query(query: string, variables: {[key: string]: string | number | boolean} = {}): Promise<ApiResult<{ [key: string]: any }>> {
         let nb_retries = 0;
-        // TODO :
-        //  - Check for token validity => refresh ?
-        if(this.requests_quota == 0) {
-            if(Date.now() - this.last_request_time < 60 * 1000) {
-                console.info("Request quota reached 0, pause for one minute before making any further request");
-                await sleep(60 * 1000); // TODO : there may be a better way if we keep the times at which some requests are made
-            } else {
-                this.requests_quota = ANILIST_MAX_QUOTA;
+        let status = ApiStatus.AUTH_ERROR;
+        try {
+            if(!this.check_token_validity()) {
+                this.refresh_token();
             }
+            if(this.requests_quota == 0) {
+                if(Date.now() - this.last_request_time < 60 * 1000) {
+                    console.info("Request quota reached 0, pause for one minute before making any further request");
+                    await sleep(60 * 1000); // TODO : there may be a better way if we keep the times at which some requests are made
+                } else {
+                    this.requests_quota = ANILIST_MAX_QUOTA;
+                }
+            }
+            do {
+                nb_retries++;
+                this.last_request_time = Date.now();
+                let response = await axios.post('https://graphql.anilist.co', {
+                    'query': query,
+                    'variables': variables
+                }, {
+                    headers: {
+                        Authorization: "Bearer " + this.tokens.access,
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json'
+                    },
+                    validateStatus: (_status: number) => { return true; }
+                });
+                if(response.status === 200) {
+                    // console.debug("X-RateLimit-Remaining: " + response.headers['x-ratelimit-remaining']);
+                    this.requests_quota = Number(response.headers['x-ratelimit-remaining']);
+                    status = ApiStatus.OK;
+                    return api_ok(response.data['data']);
+                }
+                if(response.status === 429) {
+                    console.warn("Exceeded request quota");
+                    console.debug("Retry-After: " + response.headers['retry-after']);
+                    const retry_after = Number(response.headers['retry-after']);
+                    await sleep(1000 * retry_after + 100);
+                    status = ApiStatus.TIMEOUT;
+                } else if(response.status === 500 && nb_retries < 3) {
+                    console.info("Server error, attempt retry");
+                    status = ApiStatus.HTTP_ERROR;
+                } else {
+                    if(response.status === 401 || response.status === 403) {
+                        status = ApiStatus.AUTH_ERROR;
+                    } else {
+                        status = ApiStatus.HTTP_ERROR;
+                    }
+                    break;
+                }
+            } while(nb_retries < 5);
+            console.warn('AniList query exceeded max number of retries');
+        } catch(err) {
+            if(err instanceof axios.AxiosError) {
+                console.warn(`Got error from Axios during a request : ${err.message}`);
+            } else {
+                console.warn(`Got unknown error of type ${typeof err} during a request`);
+            }
+            status = ApiStatus.UNREACHABLE;
         }
-        do {
-            nb_retries++;
-            this.last_request_time = Date.now();
-            let response = await axios.post('https://graphql.anilist.co', {
-            'query': query,
-            'variables': variables
-            }, {
-                headers: {
-                    Authorization: "Bearer " + this.tokens.access,
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json'
-                },
-                validateStatus: (_status: number) => { return true; }
-            });
-            if(response.status === 200) {
-                // console.debug("X-RateLimit-Remaining: " + response.headers['x-ratelimit-remaining']);
-                this.requests_quota = Number(response.headers['x-ratelimit-remaining']);
-                return response.data['data'];
-            }
-            if(response.status === 429) {
-                console.warn("Exceeded request quota");
-                console.debug("Retry-After: " + response.headers['retry-after']);
-                const retry_after = Number(response.headers['retry-after']);
-                await sleep(1000 * retry_after);
-            } else {
-                throw Error("AniList query failed with code " + response.status)
-            }
-        } while(nb_retries < 5);
-        throw Error('AniList query exceeded max number of retries');
+        return api_err(status);
     }
 }
 

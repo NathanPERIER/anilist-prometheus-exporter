@@ -1,4 +1,5 @@
 import app from '../../core.js';
+import { ApiResult, api_ok, api_err } from '../../../anilist/datastruct/api_status.js';
 import { AnimeList } from '../../../anilist/datastruct/anime.js';
 import { MangaList } from '../../../anilist/datastruct/manga.js';
 import { AnilistConnector } from '../../../anilist/connector.js';
@@ -19,10 +20,12 @@ const MANGAS_FILE_PATH      = path.join(DATA_DIRECTORY, 'mangas.json');
 const MANGA_LISTS_FILE_PATH = path.join(DATA_DIRECTORY, 'manga_lists.json');
 
 
+type ApiParsedData = [ AuthenticatedUser, Map<string, AnimeList>, Map<string, MangaList> ];
+
 
 let data_last_loaded = 0;
 
-async function load_data(): Promise<[AuthenticatedUser, Map<string, AnimeList>, Map<string, MangaList>]> {
+async function load_data(): Promise<ApiResult<ApiParsedData>> {
     let user_data: AuthenticatedUser;
     let animes:      Map<string, AnimeDTO>;
     let anime_lists: Map<string, AnimeListDTO>;
@@ -31,23 +34,36 @@ async function load_data(): Promise<[AuthenticatedUser, Map<string, AnimeList>, 
     if(Date.now() - data_last_loaded > CACHE_TIMEOUT_SEC * 1000) {
         console.log('Loading data from the API');
 
-        const connector = await AnilistConnector.init();
+        const rsp = await AnilistConnector.init();
+        if(!rsp.ok) {
+            return api_err(rsp.status);
+        }
+        const connector = rsp.data;
 
         user_data = connector.get_user();
         await dump_json(USER_FILE_PATH, user_data);
 
         const tags_data = await connector.get_tags();
-        await dump_json(TAGS_FILE_PATH, tags_data);
+        if(!tags_data.ok) {
+            return api_err(tags_data.status);
+        }
+        await dump_json(TAGS_FILE_PATH, tags_data.data);
         
         const anime_data = await connector.get_animes();
-        animes      = anime_data.animes;
-        anime_lists = anime_data.anime_lists;
+        if(!anime_data.ok) {
+            return api_err(anime_data.status);
+        }
+        animes      = anime_data.data.animes;
+        anime_lists = anime_data.data.anime_lists;
         await dump_json(ANIMES_FILE_PATH,      Object.fromEntries(animes));
         await dump_json(ANIME_LISTS_FILE_PATH, Object.fromEntries(anime_lists));
         
         const manga_data = await connector.get_mangas();
-        mangas      = manga_data.mangas;
-        manga_lists = manga_data.manga_lists;
+        if(!manga_data.ok) {
+            return api_err(manga_data.status);
+        }
+        mangas      = manga_data.data.mangas;
+        manga_lists = manga_data.data.manga_lists;
         await dump_json(MANGAS_FILE_PATH,      Object.fromEntries(mangas));
         await dump_json(MANGA_LISTS_FILE_PATH, Object.fromEntries(manga_lists));
 
@@ -67,22 +83,29 @@ async function load_data(): Promise<[AuthenticatedUser, Map<string, AnimeList>, 
     const manga_data = new Map<string, MangaList>(Array.from(manga_lists.entries()).map(val => {
         return [val[0], new MangaList(val[1], mangas)];
     }));
-    return [user_data, anime_data, manga_data];
+    return api_ok([user_data, anime_data, manga_data]);
 }
 
 
 
 async function load_document(): Promise<PrometheusDocument> {
 
-    const [user_data, anime_data, manga_data] = await load_data();
+    let document = new PrometheusDocument();
+
+    const rsp = await load_data();
+
+    document.add_group('anilist_api_status', 'Status of the connection to the AniList API', [[{}, rsp.status]])
+
+    if(!rsp.ok) {
+        return document;
+    }
+
+    const [user_data, anime_data, manga_data] = rsp.data;
 
     const animes = anime_data.map(val => val.animes).flat();
     const mangas = manga_data.map(val => val.mangas).flat();
 
     const user_id = user_data.user_id.toString();
-
-
-    let document = new PrometheusDocument();
 
     document.add_group('anilist_user', 'User for which the data is exported.', [[{'user_id': user_id, 'username': user_data.username}, 1]]);
     
